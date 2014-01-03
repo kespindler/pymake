@@ -3,6 +3,8 @@ import inspect
 import os
 import re
 
+rules = {} # mapping from string or function to 
+
 class SystemError(Exception):
     pass
 
@@ -131,3 +133,4 @@ class Environment:
         self.DEFAULT_ACTION = "all"
     pass
 
+env = Environment()

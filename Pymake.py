@@ -13,9 +13,9 @@ def clean():
     """Clean shit. """
     print 'cleaning'
 
-def build(depends=clean):
+@depends(clean)
+def build():
     """Build shit. """
-    import ipdb;ipdb.set_trace()
     print 'building'
 
 def withargs(arg1, arg2, depends=clean):
