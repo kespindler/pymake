@@ -122,11 +122,15 @@ def sh(format_cmd, t=None):
         cur_frame = inspect.currentframe()
         caller_frame = cur_frame.f_back
         #fpath = caller_frame.f_locals["__fname"]
-        first_arg = caller_frame.f_code.co_varnames[0]
-        fpath = caller_frame.f_locals[first_arg]
-        t = FileFormatObject(fpath)
+        args = caller_frame.f_code.co_varnames
+        if len(args):
+            fpath = caller_frame.f_locals[args[0]]
+            t = FileFormatObject(fpath)
 
-    cmd = format_cmd.format(t, **vars(t))
+    if t is None: # no arg was found
+        cmd = format_cmd
+    else:
+        cmd = format_cmd.format(t, **vars(t))
     code = os.system(cmd)
     if code:
         raise SystemError("Command finished with non-zero return value.")
