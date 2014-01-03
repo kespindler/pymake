@@ -31,10 +31,6 @@ class Action:
             function = env.DEFAULT_INTERP
             function(self.action)
 
-#class FunctionAction(Action):
-#    def 
-
-
 def directory(dir, depends=None):
     """Register a file task where the action is mkdir. 
 
