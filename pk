@@ -1,0 +1,58 @@
+#!/usr/bin/env python
+import argparse
+import imp
+from pymake import *
+import sys
+
+def add_function(subparsers, pymake, f):
+    func = getattr(pymake, f)
+    if getattr(func, 'ignored', False) or not inspect.isfunction(func):
+        return
+    subparser = subparsers.add_parser(f, help=func.__doc__)
+    args, varargs, keywords, defaults = inspect.getargspec(func)
+    depends = getattr(func, "depends", None)
+    for arg in args:
+        subparser.add_argument(arg)
+    # TODO effectively handle keywords and defaults
+    rules[f] = Action(f, func, depends)
+ 
+def main():
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="subparser")
+
+    pymake = imp.new_module('pymake')
+    dummy = imp.new_module('dummy')
+
+    exec "from pymake import *" in dummy.__dict__
+
+    fname = "Pymake.py"
+    if not os.path.exists(fname):
+        print 'No Pymake file found. Exiting...'
+
+    with open(fname) as f:
+        code = f.read()
+    exec code in pymake.__dict__
+    
+    functions = [f for f in sorted(dir(pymake)) if f not in dir(dummy)]
+
+    print functions
+    for f in functions:
+        add_function(subparsers, pymake, f)
+   
+    if len(sys.argv) < 2:
+        args = parser.parse_args([env.DEFAULT_ACTION])
+    else:
+        args = parser.parse_args()
+        
+    print args
+    command = args.subparser
+    kwargs = vars(args)
+    del kwargs['subparser']
+
+    # TODO pass args
+    rules[command].run(**kwargs)
+
+    #function(**kwargs)
+
+if __name__ == "__main__":
+    main()
