@@ -1,4 +1,4 @@
-from pyrake import *
+from pymake import *
 
 @ignore
 def helper():
