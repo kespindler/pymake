@@ -1,4 +1,5 @@
-from collections import Iterable
+from __future__ import print_function
+from collections import Iterable, Mapping
 from functools import partial, wraps
 import argparse
 import inspect
@@ -6,14 +7,12 @@ import sys
 import imp
 import os
 import re
-from logging import basicConfig, DEBUG, INFO, debug, LogRecord
+from logging import basicConfig, DEBUG, INFO, debug, LogRecord, info
 
 def getMessage(self):
     msg = str(self.msg)
-    print msg
     if self.args:
         msg = msg.format(*self.args)
-    print msg
     return msg
 LogRecord.getMessage = getMessage
 
@@ -130,10 +129,16 @@ def sh(format_cmd, t=None):
     if t is None: # no arg was found
         cmd = format_cmd
     else:
-        cmd = format_cmd.format(t, **vars(t))
-    code = os.system(cmd)
-    if code:
-        raise SystemError("Command finished with non-zero return value.")
+        fmtdict = t
+        if not isinstance(t, Mapping):
+            fmtdict = vars(t)
+        cmd = format_cmd.format(t, **fmtdict)
+    if env.COLD:
+        print(cmd)
+    else:
+        code = os.system(cmd)
+        if code:
+            raise SystemError("Command finished with non-zero return value.")
 
 def pymake(taskname, *args, **kwargs):
     """ Calls execution of a task. Use this if the task you'd like to execute cannot be expressed as a
@@ -189,7 +194,7 @@ def main():
     try:
         exec code in pymake.__dict__
     except NameError:
-        info('No Pymake file found. Exiting...')
+        print('No Pymake file found. Exiting...')
         return
     
     functions = [f for f in sorted(dir(pymake)) if f not in dir(dummy)]
@@ -218,6 +223,7 @@ class Environment:
     def __init__(self):
         self.DEFAULT_INTERP = sh
         self.DEFAULT_ACTION = "all"
+        self.COLD = False
     pass
 
 env = Environment()
