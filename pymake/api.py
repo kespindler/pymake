@@ -6,6 +6,19 @@ import sys
 import imp
 import os
 import re
+from logging import basicConfig, DEBUG, INFO, debug, LogRecord
+
+def getMessage(self):
+    msg = str(self.msg)
+    print msg
+    if self.args:
+        msg = msg.format(*self.args)
+    print msg
+    return msg
+LogRecord.getMessage = getMessage
+
+#basicConfig(level=DEBUG)
+basicConfig()
 
 rules = {} # mapping from string or function to 
 
@@ -27,9 +40,8 @@ class Action:
                     self.depends.append(d.__name__)
 
     def run(self, *args, **kwargs):
-        __fname = self.name
-        print 'Running', __fname
-        print 'Depends', self.depends
+        debug('Running {}', self.name)
+        debug('Depends {}', self.depends)
         for task in self.depends:
             action = rules[task]
             action.run(*args, **kwargs)
@@ -160,17 +172,25 @@ def main():
 
     exec "from pymake import *" in dummy.__dict__
 
-    fname = "Pymake.py"
-    if not os.path.exists(fname):
-        print 'No Pymake file found. Exiting...'
-
-    with open(fname) as f:
-        code = f.read()
-    exec code in pymake.__dict__
+    fnames = ["Pymake",
+            "pymake",
+            "Pymake.py",
+            "pymake.py"]
+    for fname in fnames:
+        if not os.path.exists(fname):
+            continue
+        with open(fname) as f:
+            code = f.read()
+        break
+    try:
+        exec code in pymake.__dict__
+    except NameError:
+        info('No Pymake file found. Exiting...')
+        return
     
     functions = [f for f in sorted(dir(pymake)) if f not in dir(dummy)]
 
-    print functions
+    debug("functions found {}", functions)
     for f in functions:
         add_function(subparsers, pymake, f)
    
@@ -179,7 +199,7 @@ def main():
     else:
         args = parser.parse_args()
         
-    print args
+    debug("args {}", args)
     command = args.subparser
     kwargs = vars(args)
     del kwargs['subparser']
