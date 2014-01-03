@@ -7,5 +7,10 @@ setup(name='pymake',
       author='Python Make',
       author_email='flyingcircus@example.com',
       license='MIT',
-      packages=['funniest'],
-      zip_safe=False)
+      packages=['pymake'],
+      entry_points={
+          'console_scripts': [
+              'pk = pymake.main',
+              ]
+          }
+      )
