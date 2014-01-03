@@ -10,7 +10,7 @@ setup(name='pymake',
       packages=['pymake'],
       entry_points={
           'console_scripts': [
-              'pk = pymake.main',
+              'pk = pymake:main',
               ]
           }
       )

@@ -1,5 +1,5 @@
 from collections import Iterable
-from functools import partial
+from functools import partial, wraps
 import argparse
 import inspect
 import sys
@@ -37,7 +37,8 @@ class Action:
             self.action(*args, **kwargs)
         elif self.action is not None:
             function = env.DEFAULT_INTERP
-            function(self.action)
+            arg = FileFormatObject(self.name)
+            function(self.action, arg)
 
 def directory(dir, depends=None):
     """Register a file task where the action is mkdir. 
@@ -107,14 +108,15 @@ def sh(format_cmd, t=None):
     """
     if t is None:
         cur_frame = inspect.currentframe()
-        outer_frames = inspect.getouterframes(cur_frame)
-        caller_frame = outer_frames[1][0]
-        fpath = caller_frame.f_locals["__fname"]
+        caller_frame = cur_frame.f_back
+        #fpath = caller_frame.f_locals["__fname"]
+        first_arg = caller_frame.f_code.co_varnames[0]
+        fpath = caller_frame.f_locals[first_arg]
         t = FileFormatObject(fpath)
 
     cmd = format_cmd.format(t, **vars(t))
     code = os.system(cmd)
-    if not code:
+    if code:
         raise SystemError("Command finished with non-zero return value.")
 
 def pymake(taskname, *args, **kwargs):
@@ -140,8 +142,13 @@ def add_function(subparsers, module, f):
 
     depends = getattr(func, "depends", None)
 
-    func_partial = partial(pymake, taskname=f)
-    setattr(module, f, func_partial)
+    @wraps(func)
+    def func_wrapper(*args, **kwargs):
+        action = rules[f]
+        action.run(*args, **kwargs)
+
+    #func_partial = partial(pymake, taskname=f)
+    setattr(module, f, func_wrapper)
     rules[f] = Action(f, func, depends)
  
 def main():
@@ -177,11 +184,7 @@ def main():
     kwargs = vars(args)
     del kwargs['subparser']
 
-    # TODO pass args
     rules[command].run(**kwargs)
-
-    #function(**kwargs)
-
 
 class Environment:
     """Specifies some defaults for Pymake. Specifically,
