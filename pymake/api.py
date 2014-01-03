@@ -9,19 +9,31 @@ class Environment:
         self.DEFAULT_ACTION = all
     pass
 
+class Action:
+    def __init__(self, action, depends=None):
+        self.name = name
+        self.action = action
+        if depends
+        self.depends
+
+    def run(self):
+        pass
+
 env = Environment()
+rules = {}
 
 def directory(dir, depends=None):
     """Register a file task where the action is mkdir. 
 
     :param dir: the directory path as a string.
+    :param depends: a dependency or list of dependencies.
 
     Usage::
 
       # Upon rule's execution, will create a new directory at this location
       >>> directory("/my/directory/path")
     """
-    file(dir, action = "mkdir " + dir)
+    file(dir, action = "mkdir " + dir, depends=depends)
 
 def file(fpath, action=None, depends=None):
     """Register a task corresponding to the file fpath. Will only be built if file must be updated.
@@ -30,8 +42,10 @@ def file(fpath, action=None, depends=None):
     format, 
 
     :param fpath: the file path.
-    :param action: string or callable. String is 
+    :param action: string or callable. String is executed by the default interpreter.
+    :param depends: a dependency or list of dependencies.
     """
+    rules[fpath] = action
 
 def rule(matcher, action=None, depends=None):
     """Register a rule-based task. If passed a compiled regex object, it will work according to that
