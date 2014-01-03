@@ -22,6 +22,8 @@ class Action:
 
     def run(self, *args, **kwargs):
         __fname = self.name
+        print 'Running', __fname
+        print 'Depends', self.depends
         for task in self.depends:
             action = rules[task]
             action.run(*args, **kwargs)
