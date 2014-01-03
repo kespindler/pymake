@@ -57,6 +57,6 @@ def command(arg1) -> [dep1, dep2]:
 # + easy to read
 
 # Conclusion
-# I really only like proposal 3 for the Function Calls, and two and four seem nicest for Function
+# I really only like proposal 3 for the Function Calls, and one and four seem nicest for Function
 # Definition. 4 is tempting, but it seems a major negative that its python3 only. On the other hand,
 # maybe thats a forcing function to update to Python3...
