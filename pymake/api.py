@@ -16,8 +16,7 @@ def getMessage(self):
     return msg
 LogRecord.getMessage = getMessage
 
-#basicConfig(level=DEBUG)
-basicConfig()
+#basicConfig()
 
 rules = {} # mapping from string or function to 
 
@@ -126,16 +125,17 @@ def sh(format_cmd, t=None):
             fpath = caller_frame.f_locals[args[0]]
             t = FileFormatObject(fpath)
 
-    if t is None: # no arg was found
-        cmd = format_cmd
-    else:
-        fmtdict = t
-        if not isinstance(t, Mapping):
-            fmtdict = vars(t)
-        cmd = format_cmd.format(t, **fmtdict)
+    # t could be None, a string, an obj with __dict__, or a Mapping
+    fmtdict = {}
+    if isinstance(t, Mapping):
+        fmtdict.update(t)
+    elif hasattr(t, "__dict__"):
+        fmtdict.update(vars(t))
+    cmd = format_cmd.format(t, **fmtdict)
     if env.COLD:
         print(cmd)
     else:
+        debug(cmd)
         code = os.system(cmd)
         if code:
             raise SystemError("Command finished with non-zero return value.")
