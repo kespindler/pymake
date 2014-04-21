@@ -1,54 +1,11 @@
-from __future__ import print_function
 from collections import Iterable, Mapping
 from functools import partial, wraps
-import argparse
-import inspect
+from logging import debug, info
+from exceptions import OSError
+import task
 import sys
-import imp
 import os
 import re
-from logging import basicConfig, DEBUG, INFO, debug, LogRecord, info
-
-def getMessage(self):
-    msg = str(self.msg)
-    if self.args:
-        msg = msg.format(*self.args)
-    return msg
-LogRecord.getMessage = getMessage
-
-#basicConfig()
-
-rules = {} # mapping from string or function to 
-
-class SystemError(Exception):
-    pass
-
-class Action:
-    def __init__(self, name, action, depends=None):
-        self.name = name
-        self.action = action
-        self.depends = []
-        if depends is not None:
-            if not isinstance(depends, Iterable):
-                depends = [depends]
-            for d in depends:
-                if isinstance(d, basestring):
-                    self.depends.append(d)
-                else:
-                    self.depends.append(d.__name__)
-
-    def run(self, *args, **kwargs):
-        debug('Running {}', self.name)
-        debug('Depends {}', self.depends)
-        for task in self.depends:
-            action = rules[task]
-            action.run(*args, **kwargs)
-        if callable(self.action):
-            self.action(*args, **kwargs)
-        elif self.action is not None:
-            function = env.DEFAULT_INTERP
-            arg = FileFormatObject(self.name)
-            function(self.action, arg)
 
 def directory(dir, depends=None):
     """Register a file task where the action is mkdir. 
@@ -61,9 +18,9 @@ def directory(dir, depends=None):
       # Upon rule's execution, will create a new directory at this location
       >>> directory("/my/directory/path")
     """
-    file(dir, action = "mkdir " + dir, depends=depends)
+    file(dir, "mkdir '%s'" % dir, depends)
 
-def file(fpath, action=None, depends=None):
+def file(fpath, action, depends=None):
     """Register a task corresponding to the file fpath. Will only be built if file must be updated.
     An action can be either a string or a callable. If it is a string, it will be passed to the env's
     DEFAULT_INTERP function and therefore follows same conventions as the `sh` command ({}-style
@@ -73,7 +30,7 @@ def file(fpath, action=None, depends=None):
     :param action: string or callable. String is executed by the default interpreter.
     :param depends: a dependency or list of dependencies.
     """
-    rules[fpath] = Action(fpath, action, depends)
+    task.rules[fpath] = task.Task(fpath, action, depends)
 
 def rule(matcher, action=None, depends=None):
     """Register a rule-based task. If passed a compiled regex object, it will work according to that
@@ -83,7 +40,7 @@ def rule(matcher, action=None, depends=None):
     """
     if isinstance(matcher, basestring):
         matcher = re.compile("[^/?*:;{}\\]+"+matcher+"$")
-    rules[fpath] = Action(fpath, action, depends)
+    task.rules[fpath] = task.Task(fpath, action, depends)
     
 def depends(*args):
     """Decorator to create dependencies for a rule. 
@@ -101,119 +58,27 @@ def ignore(func):
     func.ignore = True
     return func
 
-# Only used when the formatting actually starts to occur
-class FileFormatObject:
-    def __init__(self, fpath):
-        self.fpath = fpath
-        self.basename = os.path.basename(fpath)
-        self.name = os.path.splitext(fpath)[0]
+def sh(cmd_fstring, args = None):
+    if args is None:
+        cur_frame = sys._getframe()
+        back_frame = cur_frame.f_back
+        args = back_frame.f_globals.copy()
+        args.update(back_frame.f_locals)
 
-    def __str__(self):
-        return self.fpath
-
-def sh(format_cmd, t=None):
-    """Accepts a new-style (with {}) Python format string, and executes it as a shell command.
-    If no object for formatting is given, we use some Python magic to extract the first arg of the
-    calling function.
-    """
-    if t is None:
-        cur_frame = inspect.currentframe()
-        caller_frame = cur_frame.f_back
-        #fpath = caller_frame.f_locals["__fname"]
-        args = caller_frame.f_code.co_varnames
-        if len(args):
-            fpath = caller_frame.f_locals[args[0]]
-            t = FileFormatObject(fpath)
-
-    # t could be None, a string, an obj with __dict__, or a Mapping
     fmtdict = {}
-    if isinstance(t, Mapping):
-        fmtdict.update(t)
-    elif hasattr(t, "__dict__"):
-        fmtdict.update(vars(t))
-    cmd = format_cmd.format(t, **fmtdict)
+    if isinstance(args, Mapping):
+        fmtdict.update(args)
+    elif hasattr(args, "__dict__"):
+        fmtdict.update(vars(args))
+    cmd = cmd_fstring.format(args, **fmtdict)
     if env.COLD:
-        print(cmd)
+        print cmd
     else:
         debug(cmd)
         code = os.system(cmd)
         if code:
-            raise SystemError("Command finished with non-zero return value.")
+            raise OSError("Command finished with non-zero return value.")
 
-def pymake(taskname, *args, **kwargs):
-    """ Calls execution of a task. Use this if the task you'd like to execute cannot be expressed as a
-    Python object name (e.g. it is a filepath).
-
-    # Executes the task for /my/file
-    >>> pymake.pymake("/my/file")
-    """
-    action = rules[taskname]
-    action.run(*args, **kwargs)
-
-def add_function(subparsers, module, f):
-    func = getattr(module, f)
-    if getattr(func, 'ignored', False) or not inspect.isfunction(func):
-        return
-
-    # TODO effectively handle keywords and defaults
-    subparser = subparsers.add_parser(f, help=func.__doc__)
-    args, varargs, keywords, defaults = inspect.getargspec(func)
-    for arg in args:
-        subparser.add_argument(arg)
-
-    depends = getattr(func, "depends", None)
-
-    @wraps(func)
-    def func_wrapper(*args, **kwargs):
-        action = rules[f]
-        action.run(*args, **kwargs)
-
-    #func_partial = partial(pymake, taskname=f)
-    setattr(module, f, func_wrapper)
-    rules[f] = Action(f, func, depends)
- 
-def main():
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest="subparser")
-
-    pymake = imp.new_module('pymake')
-    dummy = imp.new_module('dummy')
-
-    exec "from pymake import *" in dummy.__dict__
-
-    fnames = ["Pymake",
-            "pymake",
-            "Pymake.py",
-            "pymake.py"]
-    for fname in fnames:
-        if not os.path.exists(fname):
-            continue
-        with open(fname) as f:
-            code = f.read()
-        break
-    try:
-        exec code in pymake.__dict__
-    except NameError:
-        print('No Pymake file found. Exiting...')
-        return
-    
-    functions = [f for f in sorted(dir(pymake)) if f not in dir(dummy)]
-
-    debug("functions found {}", functions)
-    for f in functions:
-        add_function(subparsers, pymake, f)
-   
-    if len(sys.argv) < 2:
-        args = parser.parse_args([env.DEFAULT_ACTION])
-    else:
-        args = parser.parse_args()
-        
-    debug("args {}", args)
-    command = args.subparser
-    kwargs = vars(args)
-    del kwargs['subparser']
-
-    rules[command].run(**kwargs)
 
 class Environment:
     """Specifies some defaults for Pymake. Specifically,
@@ -227,3 +92,4 @@ class Environment:
     pass
 
 env = Environment()
+

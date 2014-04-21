@@ -1,5 +1,3 @@
-from pymake import *
-
 @ignore
 def helper():
     print 'helping'
@@ -12,6 +10,11 @@ def all():
 def clean():
     """Clean shit. """
     print 'cleaning'
+
+def buildtwo():
+    """Clean once, build twice."""
+    build()
+    build()
 
 @depends(clean)
 def build():
