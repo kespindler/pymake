@@ -1,3 +1,6 @@
 *.pyc
 *.DS_Store
 pymake.egg-info
+build/
+dist/
+pymake2.egg-info/

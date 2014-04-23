@@ -6,6 +6,7 @@ import task
 import sys
 import os
 import re
+import sys
 
 def directory(dir, depends=None):
     """Register a file task where the action is mkdir. 
@@ -72,7 +73,7 @@ def sh(cmd_fstring, args = None):
         fmtdict.update(vars(args))
     cmd = cmd_fstring.format(args, **fmtdict)
     if env.COLD:
-        print cmd
+        info(cmd)
     else:
         debug(cmd)
         code = os.system(cmd)
