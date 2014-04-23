@@ -47,6 +47,7 @@ def find_pymake_file():
     found = ""
     for fname in fnames:
         if os.path.exists(fname):
+            debug("found: %s", fname)
             found = os.path.abspath(fname)
             break
     return found
@@ -65,8 +66,8 @@ def main():
 
     pkg_path = os.path.dirname(pymake.__file__)
     api_code = compile("from pymake.api import *", pkg_path+"/api.py", "exec")
-    exec api_code in dummy_mod.__dict__
-    exec api_code in command_mod.__dict__
+    exec(api_code, dummy_mod.__dict__)
+    exec(api_code, command_mod.__dict__)
 
     pymake_file = find_pymake_file()
     if not pymake_file:
@@ -76,7 +77,7 @@ def main():
     with open(pymake_file) as f:
         code = f.read()
     user_code = compile(code, pymake_file, "exec")
-    exec user_code in command_mod.__dict__
+    exec(user_code, command_mod.__dict__)
     
     functions = [f for f in dir(command_mod) if f not in dir(dummy_mod)]
 
