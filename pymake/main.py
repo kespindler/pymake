@@ -55,10 +55,18 @@ def find_pymake_file():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-D', action="store_true", default=False,
-        dest='pymake_D',
-        help="Debug output.")
-
+    pymake_args = {
+        'D': dict(action="store_true",
+             default=False,
+             help='Debug output.'),
+        'cold': dict(action="store_true", 
+             default=False,
+             help="Cold run shell output."),
+    }
+    for k in pymake_args:
+        pymake_args[k]['dest'] = "pymake_" + k
+        arg = '-'*(1 if len(k)==1 else 2) + k
+        parser.add_argument(arg, **pymake_args[k])
     subparsers = parser.add_subparsers(dest="subparser")
 
     command_mod = imp.new_module('command_mod')
@@ -90,12 +98,17 @@ def main():
         args = parser.parse_args()
 
     basicConfig(level=DEBUG if args.pymake_D else INFO)
+    env.COLD = args.pymake_cold
+
     debug("Tasks found: %s", sorted(rules.keys()))
     debug("Passed command line arguments: %s", args)
     command = args.subparser
     kwargs = vars(args)
     del kwargs['subparser']
-    del kwargs['pymake_D']
+    for k in pymake_args:
+        dest = pymake_args[k]['dest']
+        del kwargs[dest]
+    print pymake_args
 
     rules[command].run(**kwargs)
 

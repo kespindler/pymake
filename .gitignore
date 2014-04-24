@@ -4,3 +4,4 @@ pymake.egg-info
 build/
 dist/
 pymake2.egg-info/
+examples/pymake.py

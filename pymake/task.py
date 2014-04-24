@@ -29,6 +29,8 @@ class Task:
             return None
         for task in self.depends:
             action = rules[task]
+            print action.name
+            print args, kwargs
             action.run(*args, **kwargs)
         if callable(self.action):
             self.action(*args, **kwargs)
