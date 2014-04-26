@@ -108,7 +108,6 @@ def main():
     for k in pymake_args:
         dest = pymake_args[k]['dest']
         del kwargs[dest]
-    print pymake_args
 
     rules[command].run(**kwargs)
 
