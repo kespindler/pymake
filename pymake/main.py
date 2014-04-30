@@ -71,6 +71,7 @@ def main():
 
     command_mod = imp.new_module('command_mod')
     dummy_mod = imp.new_module('dummy_mod')
+    sys.modules['command_mod'] = command_mod
 
     pkg_path = os.path.dirname(pymake.__file__)
     api_code = compile("from pymake.api import *", pkg_path+"/api.py", "exec")
@@ -91,6 +92,8 @@ def main():
 
     for f in sorted(functions):
         add_function(subparsers, command_mod, f)
+    #del command_mod
+    #del dummy_mod
    
     if len(sys.argv) < 2:
         args = parser.parse_args([env.DEFAULT_ACTION])
