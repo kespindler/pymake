@@ -31,7 +31,7 @@ def add_function(subparsers, module, funcname):
         task.varargs = varargs
     for arg, default in zip(args[n_args:], defaults):
         task.args.append(arg)
-        task.defaults.append(default)
+        task.defaults[arg] = default
         name = ('-' if len(arg) == 1 else '--') + arg
         if isinstance(default, bool):
             action = "store_" + str(not default).lower()
@@ -58,21 +58,16 @@ def find_pymake_file():
             break
     return found
  
-def build_args(task, cmd_args):
-    args = []
-    kwargs = {}  # unused
-    for arg in task.args:
-        # arg not being in there is an error.
-        try:
-            value = cmd_args[arg]
-            args.append(value)
-        except AttributeError:
-            raise TypeError("arg %s not passed "
-                    "in and has no default for task %s." %
-                    (arg, task.name))
-    if task.varargs:
-        args.extend(cmd_args[task.varargs])
-    return args, kwargs
+
+def pop_pymake_args(args, pymake_args):
+    command = args.subparser
+    kwargs = vars(args)
+    del kwargs['subparser']
+    for k in pymake_args:
+        dest = pymake_args[k]['dest']
+        del kwargs[dest]
+    return command, kwargs
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -124,14 +119,8 @@ def main():
 
     debug("Tasks found: %s", sorted(rules.keys()))
     debug("Passed command line arguments: %s", args)
-    command = args.subparser
-    kwargs = vars(args)
-    del kwargs['subparser']
-    for k in pymake_args:
-        dest = pymake_args[k]['dest']
-        del kwargs[dest]
 
+    command, kwargs = pop_pymake_args(args, pymake_args)
     task = rules[command]
-    args, kwargs = build_args(task, kwargs)
-    task.run(*args, **kwargs)
+    task.run(kwargs)
 

@@ -14,7 +14,7 @@ class Task:
         self.args = [] # list of varnames of the args
         self.varargs = None # variable name of the varargs
         self.kwargs = None
-        self.defaults = []
+        self.defaults = {}
         if depends is not None:
             if (isinstance(depends, basestring) or 
                 not isinstance(depends, Iterable)):
@@ -25,21 +25,43 @@ class Task:
                 else:
                     self.depends.append(d.__name__)
 
-    def run(self, *args, **kwargs):
+    def run(self, cmd_args):
         debug('Running: %s', self.name)
         debug('Depends: %s', self.depends)
         if self.executed:
             debug('%s has already executed. Skipping.', self.name)
             return None
-        debug("args: %s", args)
-        debug("kwargs: %s", kwargs)
         for task in self.depends:
             action = rules[task]
-            action.run()
+            # build args here.
+            action.run(cmd_args)
         if callable(self.action):
+            args, kwargs = self.build_args(cmd_args)
+            debug("Signature: arg: %s, var: %s, kwarg: %s, default: %s)",
+                    self.args, self.varargs, self.kwargs, self.defaults)
+            debug("args: %s", args)
+            debug("kwargs: %s", cmd_args)
             self.action(*args, **kwargs)
         elif self.action is not None:
             function = api.env.DEFAULT_INTERP
+            # TODO do i need to rethink this signature?
             function(self.action, self.name)
         self.executed = True
+
+    def build_args(self, cmd_args):
+        args = []
+        kwargs = {}  # unused
+        for arg in self.args:
+            if arg in cmd_args:
+                value = cmd_args[arg]
+            elif arg in self.defaults:
+                value = self.defaults[arg]
+            else:
+                raise TypeError("arg %s not passed "
+                        "in and has no default for task %s." %
+                        (arg, self.name))
+            args.append(value)
+        if self.varargs:
+            args.extend(cmd_args[self.varargs])
+        return args, kwargs
 
