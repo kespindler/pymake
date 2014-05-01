@@ -11,6 +11,10 @@ class Task:
         self.action = action
         self.depends = []
         self.executed = False
+        self.args = [] # list of varnames of the args
+        self.varargs = None # variable name of the varargs
+        self.kwargs = None
+        self.defaults = []
         if depends is not None:
             if (isinstance(depends, basestring) or 
                 not isinstance(depends, Iterable)):
@@ -27,11 +31,11 @@ class Task:
         if self.executed:
             debug('%s has already executed. Skipping.', self.name)
             return None
+        debug("args: %s", args)
+        debug("kwargs: %s", kwargs)
         for task in self.depends:
             action = rules[task]
-            print action.name
-            print args, kwargs
-            action.run(*args, **kwargs)
+            action.run()
         if callable(self.action):
             self.action(*args, **kwargs)
         elif self.action is not None:

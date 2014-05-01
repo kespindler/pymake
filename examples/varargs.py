@@ -1,7 +1,7 @@
 
-def example(arg1, foo=False, bar="", *args):
-    print arg1
-    print args
+def example(farg1, foo=False, bar="", *fargs):
+    print farg1
+    print fargs
     print foo
     print bar
 

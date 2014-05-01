@@ -13,6 +13,9 @@ def add_function(subparsers, module, funcname):
     func = getattr(module, funcname)
     if getattr(func, 'ignore', False) or not inspect.isfunction(func):
         return
+    depends = getattr(func, "depends", None)
+    task = Task(funcname, func, depends)
+    rules[funcname] = task
 
     subparser = subparsers.add_parser(funcname, help=func.__doc__)
     args, varargs, keywords, defaults = inspect.getargspec(func)
@@ -21,10 +24,14 @@ def add_function(subparsers, module, funcname):
     n_args = len(args) - len(defaults)
     for arg in args[:n_args]:
         subparser.add_argument(arg)
+        task.args.append(arg)
     if varargs:
         subparser.add_argument(varargs,
                 nargs="*")
+        task.varargs = varargs
     for arg, default in zip(args[n_args:], defaults):
+        task.args.append(arg)
+        task.defaults.append(default)
         name = ('-' if len(arg) == 1 else '--') + arg
         if isinstance(default, bool):
             action = "store_" + str(not default).lower()
@@ -35,10 +42,6 @@ def add_function(subparsers, module, funcname):
         else:
             subparser.add_argument(name, default=default,
                     action="store")
-
-    depends = getattr(func, "depends", None)
-    rules[funcname] = Task(funcname, func, depends)
-
 
 def find_pymake_file():
     fnames = [
@@ -55,6 +58,21 @@ def find_pymake_file():
             break
     return found
  
+def build_args(task, cmd_args):
+    args = []
+    kwargs = {}  # unused
+    for arg in task.args:
+        # arg not being in there is an error.
+        try:
+            value = cmd_args[arg]
+            args.append(value)
+        except AttributeError:
+            raise TypeError("arg %s not passed "
+                    "in and has no default for task %s." %
+                    (arg, task.name))
+    if task.varargs:
+        args.extend(cmd_args[task.varargs])
+    return args, kwargs
 
 def main():
     parser = argparse.ArgumentParser()
@@ -95,8 +113,6 @@ def main():
 
     for f in sorted(functions):
         add_function(subparsers, command_mod, f)
-    #del command_mod
-    #del dummy_mod
    
     if len(sys.argv) < 2:
         args = parser.parse_args([env.DEFAULT_ACTION])
@@ -115,5 +131,7 @@ def main():
         dest = pymake_args[k]['dest']
         del kwargs[dest]
 
-    rules[command].run(**kwargs)
+    task = rules[command]
+    args, kwargs = build_args(task, kwargs)
+    task.run(*args, **kwargs)
 
