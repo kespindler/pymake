@@ -1,4 +1,4 @@
-from logging import basicConfig, DEBUG, INFO, debug, info
+from logging import DEBUG, INFO, debug, info, getLogger
 from functools import wraps
 import argparse
 import inspect
@@ -17,11 +17,14 @@ def add_function(subparsers, module, funcname):
     subparser = subparsers.add_parser(funcname, help=func.__doc__)
     args, varargs, keywords, defaults = inspect.getargspec(func)
     defaults = defaults or []
-    n_defaults = len(defaults)
-
-    for arg in args[:-n_defaults]:
+    args = args or []
+    n_args = len(args) - len(defaults)
+    for arg in args[:n_args]:
         subparser.add_argument(arg)
-    for arg, default in zip(args[-n_defaults:], defaults):
+    if varargs:
+        subparser.add_argument(varargs,
+                nargs="*")
+    for arg, default in zip(args[n_args:], defaults):
         name = ('-' if len(arg) == 1 else '--') + arg
         if isinstance(default, bool):
             action = "store_" + str(not default).lower()
@@ -100,7 +103,7 @@ def main():
     else:
         args = parser.parse_args()
 
-    basicConfig(level=DEBUG if args.pymake_D else INFO)
+    getLogger().setLevel(level=DEBUG if args.pymake_D else INFO)
     env.COLD = args.pymake_cold
 
     debug("Tasks found: %s", sorted(rules.keys()))
