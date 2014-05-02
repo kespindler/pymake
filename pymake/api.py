@@ -1,7 +1,6 @@
-from collections import Iterable, Mapping
-from functools import partial, wraps
-from logging import debug, info
-from exceptions import OSError
+import collections
+import logging
+import exceptions
 import task
 import sys
 import os
@@ -67,18 +66,19 @@ def sh(cmd_fstring, args = None):
         args.update(back_frame.f_locals)
 
     fmtdict = {}
-    if isinstance(args, Mapping):
+    if isinstance(args, collections.Mapping):
         fmtdict.update(args)
     elif hasattr(args, "__dict__"):
         fmtdict.update(vars(args))
     cmd = cmd_fstring.format(args, **fmtdict)
     if env.COLD:
-        info(cmd)
+        logging.info(cmd)
     else:
-        debug(cmd)
+        logging.debug(cmd)
         code = os.system(cmd)
         if code:
-            raise OSError("Command finished with non-zero return value.")
+            raise exceptions.OSError(
+                    "Command finished with non-zero return value.")
 
 
 class Environment:
